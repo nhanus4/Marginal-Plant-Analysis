@@ -172,3 +172,95 @@ hist(pa_2016$GLOAD..MW.) # fairly normal
 # Look at total distribution of CO2 emisisons
 hist(pa_2016$CO2_MASS..tons.) # right skew
 
+
+################
+# Data cleaning
+################
+
+# First, check the number of instances meeting the three points highlighted in the CEMS Documentation by Priya
+
+#######################################################################################################################
+# 1. Unit has positive gross generation and positive heat input,
+# but zero emissions for any pollutant in the given hour (i.e. the unit is "on" but reported as producing no emissions)
+#######################################################################################################################
+
+# First check that there is never a negative value for gross generation and heat input
+summary(pa_2016$GLOAD..MW.) # min = 0
+summary(pa_2016$HEAT_INPUT..mmBtu.) # min = 0
+
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & (pa_2016$CO2_MASS..tons. == 0 | pa_2016$SO2_MASS..lbs. == 0 | pa_2016$NOX_MASS..lbs. == 0)),]) # 1,531 or .1%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & pa_2016$CO2_MASS..tons. == 0),]) # 89 or 0.006%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & pa_2016$SO2_MASS..lbs. == 0),]) # 1,365 or 0.09%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & pa_2016$NOX_MASS..lbs. == 0),]) # 230
+
+# TO ADD?: zero OR MISSING
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 27,450 or 2%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$CO2_MASS..tons.)),]) # 27,450 or 2%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$SO2_MASS..lbs.)),]) # 19,763 or 1%
+nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$NOX_MASS..lbs.)),]) # 0
+
+# TO ADD?: What about if just one of the "generation" criteria are met? (i.e. OR)
+nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 27,450 or 2%
+nrow(pa_2016[which(pa_2016$HEAT_INPUT..mmBtu. > 0 & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 194,383 or 13%
+
+# TO ADD?: Unit has positive gross generation and non-positive heat input; unit has non-positive gross generation and positive heat input
+nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & (is.na(pa_2016$HEAT_INPUT..mmBtu. | pa_2016$HEAT_INPUT..mmBtu. == 0))),]) # 0
+nrow(pa_2016[which((is.na(pa_2016$GLOAD..MW.) | pa_2016$GLOAD..MW. == 0) & pa_2016$HEAT_INPUT..mmBtu. > 0),]) # 249,276 or 17% of dataset
+
+###########################################################################################
+# 2. The unit has positive gross generation and positive heat input,
+# but reports less than 300 kg CO2/mWH (i.e. has unreasonably low carbon dioxide intensity)
+###########################################################################################
+
+# create a column of "carbon dioxide intensity"
+pa_2016$carbonintensity <- pa_2016$CO2_MASS..tons. * 907.185 / pa_2016$GLOAD..MW. # kg/MWh
+
+nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
+
+# TO ADD?: What about if just one of the "generation" criteria are met?
+nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
+nrow(pa_2016[which(pa_2016$HEAT_INPUT..mmBtu. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
+
+###################################################################################################################
+# 3. The unit has zero (or missing) gross generation or heat input,
+# but non-zero emissions for any pollutant (i.e. the unit is producing emissions but is not reported as being "on")
+###################################################################################################################
+
+# Check to make sure the emissions are all non-negative
+summary(pa_2016$CO2_MASS..tons.) # min = 0
+summary(pa_2016$SO2_MASS..lbs.) # min = 0
+summary(pa_2016$NOX_MASS..lbs.) # min = 0
+nrow(pa_2016[which(pa_2016$GLOAD..MW. <= 0),]) # 4915
+nrow(pa_2016[which(pa_2016$GLOAD..MW. == 0),]) # 4915
+nrow(pa_2016[is.na(pa_2016$GLOAD..MW.),]) # 1,034,583 or 70%
+
+nrow(pa_2016[which((pa_2016$GLOAD..MW. <= 0 | is.na(pa_2016$GLOAD..MW.) | pa_2016$HEAT_INPUT..mmBtu. <= 0 | is.na(pa_2016$HEAT_INPUT..mmBtu.)) & (pa_2016$CO2_MASS..tons. > 0 | pa_2016$SO2_MASS..lbs. > 0 | pa_2016$NOX_MASS..lbs. > 0)),]) # 247,605 or 17%
+
+
+##############################################################################################################################
+# Cut the data
+# Use the 3 criteria outlined by Priya, update as such:
+# Criteria 1: The unit has positive gross generation and positive heat input but zero (or missing) emissions for any pollutant
+# Criteria 2: The unit has positive gross generation and positive heat input, but reports less than 300 kg CO2/MWh
+# Criteria 3: The unit has zero (or missing) gross generation or heat input, but positive emissions for any pollutant
+
+# Note: I am not including the gross generation & heat input criteria until after the 3/2/18 meeting
+##############################################################################################################################
+
+# Criteria 1
+pa_2016_clean <- pa_2016[-which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & (pa_2016$CO2_MASS..tons. == 0 | pa_2016$SO2_MASS..lbs. == 0 | pa_2016$NOX_MASS..lbs. == 0)),]
+pa_2016_clean <- pa_2016_clean[-which((pa_2016_clean$GLOAD..MW. > 0 & pa_2016_clean$HEAT_INPUT..mmBtu. > 0) & (is.na(pa_2016_clean$CO2_MASS..tons.) | is.na(pa_2016_clean$SO2_MASS..lbs.) | is.na(pa_2016_clean$NOX_MASS..lbs.))),]
+
+# Criteria 2
+pa_2016_clean <- pa_2016_clean[-which(pa_2016_clean$GLOAD..MW. > 0 & pa_2016_clean$HEAT_INPUT..mmBtu. > 0 & pa_2016_clean$carbonintensity < 300),]
+
+# Criteria 3
+pa_2016_clean <- pa_2016_clean[-which((pa_2016_clean$GLOAD..MW. <= 0 | is.na(pa_2016_clean$GLOAD..MW.) | pa_2016_clean$HEAT_INPUT..mmBtu. <= 0 | is.na(pa_2016_clean$HEAT_INPUT..mmBtu.)) & (pa_2016_clean$CO2_MASS..tons. > 0 | pa_2016_clean$SO2_MASS..lbs. > 0 | pa_2016_clean$NOX_MASS..lbs. > 0)),]
+
+# Check difference in dataframe sizes before and after cleaning
+nrow(pa_2016) # 1,477,992
+nrow(pa_2016_clean) # 1,197,871; lose 19%
+
+
+
+
