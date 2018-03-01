@@ -193,17 +193,17 @@ nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & p
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & pa_2016$SO2_MASS..lbs. == 0),]) # 1,365 or 0.09%
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & pa_2016$NOX_MASS..lbs. == 0),]) # 230
 
-# TO ADD?: zero OR MISSING
+# CLEAN CRITERIA? zero OR MISSING
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 27,450 or 2%
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$CO2_MASS..tons.)),]) # 27,450 or 2%
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$SO2_MASS..lbs.)),]) # 19,763 or 1%
 nrow(pa_2016[which((pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0) & is.na(pa_2016$NOX_MASS..lbs.)),]) # 0
 
-# TO ADD?: What about if just one of the "generation" criteria are met? (i.e. OR)
+# CLEAN CRITERIA? What about if just one of the "generation" criteria are met? (i.e. OR)
 nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 27,450 or 2%
 nrow(pa_2016[which(pa_2016$HEAT_INPUT..mmBtu. > 0 & (is.na(pa_2016$CO2_MASS..tons.) | is.na(pa_2016$SO2_MASS..lbs.) | is.na(pa_2016$NOX_MASS..lbs.))),]) # 194,383 or 13%
 
-# TO ADD?: Unit has positive gross generation and non-positive heat input; unit has non-positive gross generation and positive heat input
+# CLEAN CRITERIA? Unit has positive gross generation and non-positive heat input; unit has non-positive gross generation and positive heat input
 nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & (is.na(pa_2016$HEAT_INPUT..mmBtu. | pa_2016$HEAT_INPUT..mmBtu. == 0))),]) # 0
 nrow(pa_2016[which((is.na(pa_2016$GLOAD..MW.) | pa_2016$GLOAD..MW. == 0) & pa_2016$HEAT_INPUT..mmBtu. > 0),]) # 249,276 or 17% of dataset
 
@@ -217,7 +217,7 @@ pa_2016$carbonintensity <- pa_2016$CO2_MASS..tons. * 907.185 / pa_2016$GLOAD..MW
 
 nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & pa_2016$HEAT_INPUT..mmBtu. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
 
-# TO ADD?: What about if just one of the "generation" criteria are met?
+# CLEAN CRITERIA?: What about if just one of the "generation" criteria are met?
 nrow(pa_2016[which(pa_2016$GLOAD..MW. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
 nrow(pa_2016[which(pa_2016$HEAT_INPUT..mmBtu. > 0 & pa_2016$carbonintensity < 300),]) # 4,075 or .2%
 
@@ -260,6 +260,57 @@ pa_2016_clean <- pa_2016_clean[-which((pa_2016_clean$GLOAD..MW. <= 0 | is.na(pa_
 # Check difference in dataframe sizes before and after cleaning
 nrow(pa_2016) # 1,477,992
 nrow(pa_2016_clean) # 1,197,871; lose 19%
+
+
+##################################################################################
+# Continue next set of analyses just looking at a single unit; ORISPL_CODE = 3096
+##################################################################################
+
+# What is the name of the facility for unit with ORISPL_CODE = 3096
+count(pa_2016_clean[which(pa_2016_clean$ORISPL_CODE == 3096),]$FACILITY_NAME) # Facility name is "Brunot Island Power Station"; 26,201 observations of this unit
+nrow(pa_2016_clean[which(pa_2016_clean$ORISPL_CODE == 3096),]) # 26,201 observations 
+count(pa_2016_clean[which(pa_2016_clean$FACILITY_NAME == "Brunot Island Power Station"),]$UNITID) # 2A, 2B, and 3
+
+# Just make a dataframe of ORISPL_CODE = 3096 and UNITID == 33
+ORISPL_3096_3 <- pa_2016_clean[which(pa_2016_clean$ORISPL_CODE == 3096 & pa_2016_clean$UNITID == 3),]
+nrow(ORISPL_3096_3) # 8,733
+
+# CLEAN CRITERIA?: Should each unit be checked to make sure we have 8760 observations?
+
+# Distribution of total year (2016) generation
+hist(ORISPL_3096_3$GLOAD..MW.)
+
+# Count all positive generation observations
+nrow(ORISPL_3096_3[which(ORISPL_3096_3$GLOAD..MW. > 0),]) # 373 or 4%
+
+# look at generation across time
+# make a "time" hr-unit identifier
+timeunit <- seq(1,8733,1)
+ORISPL_3096_3$timeunit <- timeunit
+
+plot(x = ORISPL_3096_3$timeunit, y = ORISPL_3096_3$GLOAD..MW.)
+
+# Check out date of timeunit ~ 6,000
+ORISPL_3096_3[which(ORISPL_3096_3$timeunit == 6000),]$month # 9
+
+# Look at a single day
+summary(ORISPL_3096_3[which(ORISPL_3096_3$month == 9),]$GLOAD..MW.) # min = 1, max = 72
+count(ORISPL_3096_3[which(ORISPL_3096_3$month == 9 & ORISPL_3096_3$GLOAD..MW. > 0),]$day) # 8, 9, 18, 19, 20, 21, 22, 23
+
+summary(ORISPL_3096_3[which(ORISPL_3096_3$month == 9 & ORISPL_3096_3$day == 8),]$GLOAD..MW.) # min = 8, max = 63
+
+# Notice that a single hour might have multiple entries if the unit changes load within it
+plot(x = ORISPL_3096_3[which(ORISPL_3096_3$month == 9 & ORISPL_3096_3$day == 8),]$OP_HOUR, 
+     y = ORISPL_3096_3[which(ORISPL_3096_3$month == 9 & ORISPL_3096_3$day == 8),]$GLOAD..MW.)
+
+# What is max time unit?
+View(ORISPL_3096_3[which(ORISPL_3096_3$timeunit == max(ORISPL_3096_3$timeunit)),])
+
+# What is min time unit?
+View(ORISPL_3096_3[which(ORISPL_3096_3$timeunit == min(ORISPL_3096_3$timeunit)),])
+
+
+
 
 
 
